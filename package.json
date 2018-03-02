@@ -1,0 +1,14 @@
+{
+  "name": "mandelbrot",
+  "version": "0.1.0",
+  "description": "draw the mandelbrot set",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron main.js"
+  },
+  "author": "Thierry Despont",
+  "license": "ISC",
+  "dependencies": {
+    "electron": "^1.7.12"
+  }
+}
