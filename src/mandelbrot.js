@@ -1,19 +1,22 @@
 const electron = require('electron');
 const cp = require('child_process');
+const gpuLib = require('gpu.js');
+const gpu = new GPU();
+
 
 let canvas;
 let ctx;
 let imageData;
 let data;
 
-let maxIteration = 900;
+let maxIteration = 1000;
 let x0;
 let x1;
 let xDist;
 let y0;
 let y1;
-let width;
-let height;
+const width = 800;
+const height = 800;
 
 let new_x0;
 let new_y0;
@@ -62,8 +65,8 @@ function writeGradient(diffColor, startColor, start, size) {
 function init() {
   canvas = document.getElementById('graph');
   ctx = canvas.getContext('2d', { alpha: false });
-  width = window.innerWidth;
-  height = window.innerHeight;
+  //width = window.innerWidth;
+  //height = window.innerHeight;
   canvas.width = width;
   canvas.height = height;
   imageData = ctx.getImageData(0, 0, width, height);
@@ -106,7 +109,75 @@ function drawPoint(x, y, iteration) {
   //endPerf('drawPoint', start);
 }
 
+const computeIterationMatrix = gpu.createKernel(function(iA, iB) {
+  let iteration = 0;
+  let a = 0.0;
+  let b = 0.0;
+  while (iteration < 1000) {
+      let atemp = a * a - b * b + iA[this.thread.y*800+this.thread.x];
+      let btemp = 2 * a * b + iB[this.thread.y*800+this.thread.x];
+      if (a == atemp && b == btemp) {
+          iteration = 1000;
+          break;
+      }
+      a = atemp;
+      b = btemp;
+      iteration = iteration + 1;
+      if (Math.abs(a + b) > 16) {
+          break;
+      }
+  }
+  return iteration;
+}).setOutput([width, height]);
+
 function computeMandelbrot() {
+  let rx = (x1 - x0) / width;
+  let ry = (y1 - y0) / height;
+  let iterationA = new Array();
+  let iterationB = new Array();
+  for (let x = 0; x < width; x++) {
+      let a0 = x0 + x * rx;
+      for (let y = 0; y < height; y++) {
+          let b0 = y0 + y * ry;
+          let a = 0.0;
+          let b = 0.0;
+          iterationA.push(a0);
+          iterationB.push(b0);
+      }
+  }
+  let iteration = computeIterationMatrix(iterationA, iterationB);
+  for (let x = 0; x < width; x++) {
+      for (let y = 0; y < height; y++) {
+          drawPoint(x, y, 1000 - iteration[x][y]);
+      }
+  }
+  /*for (let x = 0; x < this.width; x++) {
+      let a0 = fd.x0 + x * rx;
+      for (let y = 0; y < this.height; y++) {
+          let b0 = fd.y0 + y * ry;
+          let a = 0.0;
+          let b = 0.0;
+          let iteration = 0;
+          while (iteration < this.settings.maxIteration) {
+              let atemp = a * a - b * b + a0;
+              let btemp = 2 * a * b + b0;
+              if (a == atemp && b == btemp) {
+                  iteration = this.settings.maxIteration;
+                  break;
+              }
+              a = atemp;
+              b = btemp;
+              iteration = iteration + 1;
+              if (Math.abs(a + b) > 16) {
+                  break;
+              }
+          }
+          this.drawPoint(x, y, this.settings.maxIteration - iteration);
+      }
+  }*/
+}
+
+/*function computeMandelbrot() {
   let start = startPerf();
   var rx = (x1 - x0) / width;
   var ry = (y1 - y0) / height;
@@ -135,7 +206,7 @@ function computeMandelbrot() {
     }
   }
   endPerf('computeMandelbrot', start);
-}
+}*/
 
 function map(val, origRangeStart, origRangeEnd, destRangeStart, destRangeEnd) {
   return destRangeStart + (destRangeEnd - destRangeStart) * ((val - origRangeStart) / (origRangeEnd - origRangeStart));
