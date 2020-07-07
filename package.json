@@ -9,7 +9,7 @@
   "author": "Thierry Despont",
   "license": "ISC",
   "dependencies": {
-    "electron": "^1.8.7",
+    "electron": "^9.1.0",
     "gpu.js": "^1.6.0"
   }
 }
